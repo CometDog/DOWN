@@ -1,0 +1,24 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "james.j.downs@gmail.com",
+    "longName": "DOWN",
+    "projectType": "native",
+    "resources": {
+        "media": []
+    },
+    "sdkVersion": "3",
+    "shortName": "DOWN",
+    "targetPlatforms": [
+        "aplite",
+        "basalt"
+    ],
+    "uuid": "73f70e91-0200-4e20-a8b3-00e39a561703",
+    "versionCode": 1,
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": true
+    }
+}
