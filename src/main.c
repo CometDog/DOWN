@@ -5,8 +5,9 @@
 #endif
 
 static Window *s_main_window; // Main window
-static TextLayer *s_date_label, *s_time_label; // Layer for date
+static TextLayer *s_date_label, *s_time_label, *s_state_label; // Labels for text
 static Layer *s_solid_layer, *s_time_layer, *s_battery_layer; // Background layers
+static int state = 0; // Determines which state the state_label is in
 
 // Buffers
 static char s_date_buffer[] = "MMDD";
@@ -156,48 +157,82 @@ static void main_window_load(Window *window) {
   // Create the label
   s_date_label = text_layer_create(GRect(0,130,144,40));
   s_time_label = text_layer_create(GRect(0,130,144,40));
+  s_state_label = text_layer_create(GRect(0,130,144,40));
   
   //Set font
   text_layer_set_font(s_date_label, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
   text_layer_set_font(s_time_label, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
+  text_layer_set_font(s_state_label, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
   
   // Set background and text colors
   #ifdef PBL_COLOR 
     text_layer_set_background_color(s_date_label, GColorVividCerulean);
     text_layer_set_background_color(s_time_label, GColorVividCerulean);
+    text_layer_set_background_color(s_state_label, GColorVividCerulean);
   #else
     text_layer_set_background_color(s_date_label, GColorBlack);
     text_layer_set_background_color(s_time_label, GColorBlack);
+    text_layer_set_background_color(s_state_label, GColorBlack);
   #endif
   text_layer_set_text_color(s_date_label, GColorWhite);
   text_layer_set_text_color(s_time_label, GColorWhite);
+  text_layer_set_text_color(s_state_label, GColorWhite);
   
   // Avoid blank screen in case updating time fails
   text_layer_set_text(s_date_label, "DATE");
   text_layer_set_text(s_time_label, "TIME");
+  text_layer_set_text(s_state_label, "DATE");
   
   // Align text
   text_layer_set_text_alignment(s_date_label, GTextAlignmentCenter);
   text_layer_set_text_alignment(s_time_label, GTextAlignmentCenter);
+  text_layer_set_text_alignment(s_state_label, GTextAlignmentCenter);
   
   // Apply layers to screen
   layer_add_child(window_layer, s_solid_layer); 
   layer_add_child(window_layer, text_layer_get_layer(s_date_label));
   layer_add_child(window_layer, text_layer_get_layer(s_time_label));
+  layer_add_child(window_layer, text_layer_get_layer(s_state_label));
   layer_add_child(window_layer, s_time_layer);
   layer_add_child(window_layer, s_battery_layer);
 }
 
-// Unhide label when called
-void timer_callback(void *data) {
-  layer_set_hidden((Layer *)s_time_label, true);
+// Hide/Unhide labels when called
+static void timer_callback(void *data) {
+  
+  // First. Display the time
+  if (state == 0) {
+    layer_set_hidden((Layer *)s_state_label, true);
+    app_timer_register(2 * 1000, timer_callback, NULL);
+    
+    state = 1;
+  }
+  
+  // Second. Display "DATE"
+  else if (state == 1) {
+    text_layer_set_text(s_state_label, "DATE");
+    layer_set_hidden((Layer *)s_state_label, false);
+    layer_set_hidden((Layer *)s_time_label, true);
+    app_timer_register(1 * 1000, timer_callback, NULL);
+    
+    state = 2;
+  }
+  
+  // Third. Display the date
+  else if (state == 2) {
+    layer_set_hidden((Layer *)s_state_label, true);
+    
+    state = 0;
+  }
 }
 
 //Control the shake gesture
 static void tap_handler(AccelAxisType axis, int32_t direction) {
-  // Show date then hide after X seconds
+  // Show "TIME"
+    text_layer_set_text(s_state_label, "TIME");
     layer_set_hidden((Layer *)s_time_label, false);
-    app_timer_register(3 * 1000, timer_callback, NULL);
+    layer_set_hidden((Layer *)s_state_label, false);
+    app_timer_register(1 * 1000, timer_callback, NULL);
 }
 
 // Unloads the layers on the main window
@@ -211,6 +246,7 @@ static void main_window_unload(Window *window) {
   // Destroy the labels
   text_layer_destroy(s_date_label);
   text_layer_destroy(s_time_label);
+  text_layer_destroy(s_state_label);
 }
   
 // Initializes the main window
@@ -224,6 +260,7 @@ static void init() {
   
   // Hide labels immediately
   layer_set_hidden((Layer *)s_time_label, true);
+  layer_set_hidden((Layer *)s_state_label, true);
   
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler); // Update time every minute
   accel_tap_service_subscribe(tap_handler); // Registers shake gestures
