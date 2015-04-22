@@ -7,7 +7,8 @@
 static Window *s_main_window; // Main window
 static TextLayer *s_date_label, *s_time_label, *s_state_label; // Labels for text
 static Layer *s_solid_layer, *s_time_layer, *s_battery_layer; // Background layers
-static int state = 0; // Determines which state the state_label is in
+
+int state = 0; // Determines which state the state_label is in
 
 // Buffers
 static char s_date_buffer[] = "MMDD";
@@ -229,10 +230,12 @@ static void timer_callback(void *data) {
 //Control the shake gesture
 static void tap_handler(AccelAxisType axis, int32_t direction) {
   // Show "TIME"
+  if (state == 0) {
     text_layer_set_text(s_state_label, "TIME");
     layer_set_hidden((Layer *)s_time_label, false);
     layer_set_hidden((Layer *)s_state_label, false);
     app_timer_register(1 * 1000, timer_callback, NULL);
+  }
 }
 
 // Unloads the layers on the main window
