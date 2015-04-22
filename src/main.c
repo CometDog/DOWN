@@ -8,7 +8,8 @@ static Window *s_main_window; // Main window
 static TextLayer *s_date_label, *s_time_label, *s_state_label; // Labels for text
 static Layer *s_solid_layer, *s_time_layer, *s_battery_layer; // Background layers
 
-int state = 0; // Determines which state the state_label is in
+int state = 1; // Determines which state the state_label is in
+bool bt = true; // Determines state that bluetooth is in. True is on.
 
 // Buffers
 static char s_date_buffer[] = "MMDD";
@@ -133,6 +134,17 @@ static void update_battery(Layer *layer, GContext *ctx) {
   #endif
 }
 
+void bt_handler(bool connected) {
+  if (connected) {
+    vibes_short_pulse();
+    bt = true;
+  }
+  else {
+    vibes_double_pulse();
+    bt = false;
+  }
+}
+
 // Update time shown on screen
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   layer_mark_dirty(window_get_root_layer(s_main_window));
@@ -201,40 +213,64 @@ static void main_window_load(Window *window) {
 // Hide/Unhide labels when called
 static void timer_callback(void *data) {
   
-  // First. Display the time
+  // First. Bluetooth check.
   if (state == 0) {
-    layer_set_hidden((Layer *)s_state_label, true);
-    app_timer_register(2 * 1000, timer_callback, NULL);
+    text_layer_set_text(s_state_label, "TIME");
+    layer_set_hidden((Layer *)s_time_label, false);
     
     state = 1;
+    
+    app_timer_register(1 * 1000, timer_callback, NULL);
   }
   
-  // Second. Display "DATE"
+  // Display the time
   else if (state == 1) {
+    layer_set_hidden((Layer *)s_state_label, true);
+    
+    state = 2;
+    
+    app_timer_register(2 * 1000, timer_callback, NULL);
+  }
+  
+  // Display "DATE"
+  else if (state == 2) {
     text_layer_set_text(s_state_label, "DATE");
     layer_set_hidden((Layer *)s_state_label, false);
     layer_set_hidden((Layer *)s_time_label, true);
-    app_timer_register(1 * 1000, timer_callback, NULL);
     
-    state = 2;
+    state = 3;
+    
+    app_timer_register(1 * 1000, timer_callback, NULL);
   }
   
-  // Third. Display the date
-  else if (state == 2) {
+  // Display the date
+  else if (state == 3) {
     layer_set_hidden((Layer *)s_state_label, true);
     
-    state = 0;
+    state = 1;
   }
 }
 
 //Control the shake gesture
 static void tap_handler(AccelAxisType axis, int32_t direction) {
   // Show "TIME"
-  if (state == 0) {
-    text_layer_set_text(s_state_label, "TIME");
-    layer_set_hidden((Layer *)s_time_label, false);
-    layer_set_hidden((Layer *)s_state_label, false);
-    app_timer_register(1 * 1000, timer_callback, NULL);
+  if (state == 1) {
+    if (bt == true) {
+      text_layer_set_text(s_state_label, "TIME");
+      layer_set_hidden((Layer *)s_time_label, false);
+      layer_set_hidden((Layer *)s_state_label, false);
+      
+      app_timer_register(1 * 1000, timer_callback, NULL);
+      
+    }
+    else if (bt == false) {
+      text_layer_set_text(s_state_label, "NOBT");
+      layer_set_hidden((Layer *)s_state_label, false);
+      
+      state = 0;
+      
+      app_timer_register(1 * 1000, timer_callback, NULL);
+    }
   }
 }
 
@@ -267,12 +303,14 @@ static void init() {
   
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler); // Update time every minute
   accel_tap_service_subscribe(tap_handler); // Registers shake gestures
+  bluetooth_connection_service_subscribe(bt_handler); // Registers bluetooth status
 }
 
 // Deinitializes the main window
 static void deinit() {
   window_destroy(s_main_window); // Destroy the main window
   accel_tap_service_unsubscribe();
+  bluetooth_connection_service_unsubscribe();
 }
 
 int main(void) {
