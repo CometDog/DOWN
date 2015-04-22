@@ -297,6 +297,14 @@ static void init() {
   });
   window_stack_push(s_main_window, true); // Show the main window. Animations = true.
   
+  //Check bluetooth status when the app starts
+  if (bluetooth_connection_service_peek()) {
+    bt = true;
+  } 
+  else {
+    bt = false;
+  }
+  
   // Hide labels immediately
   layer_set_hidden((Layer *)s_time_label, true);
   layer_set_hidden((Layer *)s_state_label, true);
